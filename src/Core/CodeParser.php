@@ -2,62 +2,53 @@
 
 namespace KKomelin\TranslatableStringExporter\Core;
 
-class CodeParser
+class StringExtractor
 {
-    /**
-     * Translation function names.
-     *
-     * @var array
-     */
-    protected $functions;
+    private $finder;
+    private $parser;
+    public $log = "";
 
-    /**
-     * Translation function pattern.
-     *
-     * @var string
-     */
-    protected $pattern = '/([FUNCTIONS])\(\h*[\'"](.+)[\'"]\h*[\),]/U';
-
-
-    /**
-     * Parser constructor.
-     */
     public function __construct()
     {
-        $this->functions = config('laravel-translatable-string-exporter.functions',
-           [
-               '__',
-               '_t',
-               '@lang'
-           ]);
-        $this->pattern = str_replace('[FUNCTIONS]', implode('|', $this->functions), $this->pattern);
-
-        if (config('laravel-translatable-string-exporter.allow-newlines', false)) {
-            $this->pattern .= 's';
-        }
+        $this->finder = new FileFinder();
+        $this->parser = new CodeParser();
     }
 
     /**
-     * Parse a file in order to find translatable strings.
-     *
-     * @param \Symfony\Component\Finder\SplFileInfo $file
-     * @return array
+     * Extract translatable strings from the project files.
      */
-    public function parse(\Symfony\Component\Finder\SplFileInfo $file)
-    {
+    public function extract() {
+
         $strings = [];
 
-        if(!preg_match_all($this->pattern, $file->getContents(), $matches)) {
-            return $strings;
+        $files = $this->finder->find();
+        foreach ($files as $file) {
+            $tmp = $this->parser->parse($file);
+            $strings = array_merge($strings, $tmp);
+            if(!empty($tmp)){
+                foreach ($tmp as $val) {
+                    $this->log .= "[{$val}]\n".$file->getRelativePath()."\n";
+                }
+            }
         }
 
-        foreach ($matches[2] as $string) {
-            $strings[] = $string;
+        return $this->formatArray($strings);
+    }
+
+    /**
+     * Convert an array of extracted strings to an associative array where each string becomes key and value.
+     *
+     * @param array $strings
+     * @return array
+     */
+    protected function formatArray(array $strings) {
+
+        $result = [];
+
+        foreach ($strings as $string) {
+            $result[$string] = $string;
         }
 
-        // Remove duplicates.
-        $strings = array_unique($strings);
-
-        return $strings;
+        return $result;
     }
 }
