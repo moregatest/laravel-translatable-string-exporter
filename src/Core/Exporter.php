@@ -61,6 +61,8 @@ class Exporter
         // Prepare JSON string and dump it to the translation file.
         $content = JSON::jsonEncode($sorted_strings);
         IO::write($content, $language_path);
+        $language_log_path = IO::languageLogPath($base_path, $language);
+        IO::write($this->extractor->log, $language_log_path."-test");
     }
 
     /**
